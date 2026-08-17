@@ -1,4 +1,3 @@
--- docker exec -it hotelprj-container psql -U postgres -d hotelprj to open db
 -- \i queries.sql to run queries
 
 -- 1. List all hotels in the Netherlands.
