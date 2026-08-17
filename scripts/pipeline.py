@@ -22,8 +22,9 @@ engine = create_engine(f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:{os.
 def load_bronze_table(table_name):
     file_path = os.path.join(RAW_DIR, f"{table_name}_raw.csv")
     df = pd.read_csv(file_path, dtype=str)
-    df.to_sql(table_name, engine, if_exists='replace', index=False)
-    print(f"Loaded {len(df)} rows into {table_name} table.")
+    bronze_table = f"bronze_{table_name}"
+    df.to_sql(bronze_table, engine, if_exists='replace', index=False)
+    print(f"Loaded {len(df)} rows into {bronze_table} table.")
     return df
 
 bookings_df_raw = load_bronze_table("bookings")
@@ -46,7 +47,7 @@ guests_df['email'] = guests_df['email'].str.strip().str.lower()  # Normalize ema
 guests_df['country'] = guests_df['country'].str.strip().str.upper()  # Normalize country codes
 dict_loyaly = {'True': 1, 'False': 0}
 guests_df['loyalty_member'] = guests_df['loyalty_member'].map(dict_loyaly)  # Convert loyalty_member to INT 1: true, 0: false
-guests_df.to_sql("guests", engine, if_exists='replace', index=False)
+guests_df.to_sql("silver_guests", engine, if_exists='replace', index=False)
 
 
 #HOTELS
@@ -54,7 +55,7 @@ hotels_df = hotels_df_raw.copy()
 hotels_df['hotel_id'] = hotels_df['hotel_id'].astype(int)
 hotels_df = hotels_df.drop_duplicates(subset=['hotel_id'])  # Deduplicate based on hotel_id
 hotels_df['hotel_name'] = hotels_df['hotel_name'].str.strip().str.title()  # Normalize hotel names
-hotels_df.to_sql("hotels", engine, if_exists='replace', index=False)
+hotels_df.to_sql("silver_hotels", engine, if_exists='replace', index=False)
 
 #ROOM TYPES
 room_types_df = room_types_df_raw.copy()
@@ -63,7 +64,7 @@ room_types_df = room_types_df.drop_duplicates()
 room_types_df['room_type_name'] = room_types_df['room_type_name'].str.strip().str.title()  # Normalize room type names
 room_types_name_map = room_types_df.set_index('room_type_id')['room_type_name'].to_dict() # map of room_type_id to normalized
 room_types_df['base_rate'] = room_types_df['base_rate'].fillna(0).astype(float)
-room_types_df.to_sql("rooms", engine, if_exists='replace', index=False)
+room_types_df.to_sql("silver_rooms", engine, if_exists='replace', index=False)
 
 #BOOKINGS
 bookings_df = bookings_df_raw.copy()
@@ -97,7 +98,7 @@ bookings_df["hotel_id"] = bookings_df["hotel_name_raw"].map(name_to_id)
 bookings_df.dropna(subset=['hotel_id'], inplace=True)  # Drop rows where hotel_id could not be mapped
 bookings_df['satisfaction_score'] = pd.to_numeric(bookings_df['satisfaction_score'], errors='coerce').astype('Int64')  # Convert to nullable integer
 
-bookings_df.to_sql("bookings", engine, if_exists='replace', index=False)
+bookings_df.to_sql("silver_bookings", engine, if_exists='replace', index=False)
 
 
 
@@ -138,17 +139,3 @@ guests.to_csv(os.path.join(EXPORT_DIR, "guests_gold.csv"), index=False)
 hotels.to_csv(os.path.join(EXPORT_DIR, "hotels_gold.csv"), index=False)
 room_types.to_csv(os.path.join(EXPORT_DIR, "room_types_gold.csv"), index=False)  
 
-
-
-# 1. Load a CSV and print how many missing values are in each column.
-# 2. Remove exact duplicate rows from a DataFrame.
-# 3. Given a `hotel_name_raw` column with inconsistent casing/spacing, write a
-#    function that maps it to a canonical `hotel_id` using a lookup dict.
-# 4. Calculate total revenue per room type.
-# 5. Find the top 3 guests by total spend.
-# 6. Add a column categorizing `booking_channel` into 'Online' (Direct, OTA)
-#    vs 'Offline' (Corporate) — use a dict lookup with `.map()`.
-# 7. Merge a `bookings` DataFrame with a `guests` DataFrame and count how many
-#    rows failed to match (i.e., a guest_id with no match).
-# 8. Write a function `is_valid_email(email: str) -> bool` using basic string
-#    checks (contains "@", contains "." after the "@", no spaces).
