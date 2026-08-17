@@ -1,0 +1,5 @@
+room_type_id,room_type_name,base_rate
+1,Standard,109.0
+2,Deluxe,139.0
+3,Suite,189.0
+4,Extended Stay,95.0

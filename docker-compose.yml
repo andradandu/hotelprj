@@ -1,0 +1,46 @@
+# Usage:
+#   docker compose up -d              # start Postgres in the background
+#   docker compose run --rm pipeline  # run the pipeline once against it
+#   docker compose down               # stop it
+#   docker compose down -v            # stop it AND delete the data volume (fresh start)
+# psql -h localhost -U hotelprj -d hotelprj
+# docker exec -it hotelprj-container psql -U postgres -d hotelprj
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: hotelprj-container
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hotelprj}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hotelprj}
+      POSTGRES_DB: ${POSTGRES_DB:-hotelprj}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - hotelprj_postgres_data:/var/lib/postgresql/data
+      - .:/hotelprj
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hotelprj} -d ${POSTGRES_DB:-hotelprj}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pipeline:
+    build: .
+    container_name: hotelprj-pipeline
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hotelprj}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hotelprj}
+      POSTGRES_DB: ${POSTGRES_DB:-hotelprj}
+      POSTGRES_HOST: postgres
+      HOST: postgres
+      POSTGRES_PORT: 5432
+    volumes:
+      - .:/hotelprj
+
+volumes:
+  hotelprj_postgres_data:
