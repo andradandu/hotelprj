@@ -3,8 +3,7 @@
 #   docker compose run --rm pipeline  # run the pipeline once against it
 #   docker compose down               # stop it
 #   docker compose down -v            # stop it AND delete the data volume (fresh start)
-# psql -h localhost -U hotelprj -d hotelprj
-# docker exec -it hotelprj-container psql -U postgres -d hotelprj
+
 
 services:
   postgres:
